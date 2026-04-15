@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(cmd /c \"mvn compile 2>&1\")"
+    ]
+  }
+}

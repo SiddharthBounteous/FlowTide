@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka-like Producer API - Frontend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .response-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .response-container.show {
+            display: block;
+        }
+
+        .response-header {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .response-content {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .response-content pre {
+            color: #333;
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .success {
+            border-left-color: #4caf50;
+        }
+
+        .error {
+            border-left-color: #f44336;
+        }
+
+        .error .response-content {
+            background: #ffebee;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+
+        .status.error {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 1px solid #ef5350;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📨 Kafka Producer API</h1>
+        <p class="subtitle">Send messages to the distributed message broker</p>
+
+        <div class="info-box">
+            <strong>ℹ️ Info:</strong> Make sure the broker is running on <code>localhost:9092</code> before sending messages.
+        </div>
+
+        <form id="producerForm">
+            <div class="form-group">
+                <label for="topic">Topic *</label>
+                <input
+                    type="text"
+                    id="topic"
+                    name="topic"
+                    placeholder="e.g., orders, events, logs"
+                    required
+                    value="orders"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="key">Key (optional)</label>
+                <input
+                    type="text"
+                    id="key"
+                    name="key"
+                    placeholder="e.g., user-123, order-456"
+                    value="id-1"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="value">Message Value *</label>
+                <textarea
+                    id="value"
+                    name="value"
+                    placeholder="Enter your message or JSON data"
+                    required
+                ></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                Send Message
+            </button>
+        </form>
+
+        <div class="response-container" id="responseContainer">
+            <div class="response-header">Response:</div>
+            <div class="response-content" id="responseContent"></div>
+            <div class="status" id="statusMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('producerForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseContainer = document.getElementById('responseContainer');
+        const responseContent = document.getElementById('responseContent');
+        const statusMessage = document.getElementById('statusMessage');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const topic = document.getElementById('topic').value.trim();
+            const key = document.getElementById('key').value.trim();
+            const value = document.getElementById('value').value.trim();
+
+            if (!topic || !value) {
+                showError('Topic and Message Value are required!');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading"></div> Sending...';
+
+            try {
+                const response = await fetch('/api/producer/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        topic: topic,
+                        key: key || 'default-key',
+                        value: value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(data);
+                } else {
+                    showError(data.message || 'Failed to send message');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Send Message';
+            }
+        });
+
+        function showSuccess(data) {
+            responseContainer.classList.add('show', 'success');
+            responseContainer.classList.remove('error');
+            responseContent.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            statusMessage.classList.add('show', 'success');
+            statusMessage.classList.remove('error');
+            statusMessage.textContent = '✓ Message sent successfully!';
+        }
+
+        function showError(message) {
+            responseContainer.classList.add('show', 'error');
+            responseContainer.classList.remove('success');
+            responseContent.innerHTML = '<pre>' + message + '</pre>';
+            statusMessage.classList.add('show', 'error');
+            statusMessage.classList.remove('success');
+            statusMessage.textContent = '✗ ' + message;
+        }
+
+        // Check API health on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/producer/health');
+                console.log('API Health:', response.ok ? 'OK' : 'Not OK');
+            } catch (error) {
+                console.error('API not reachable:', error);
+            }
+        });
+    </script>
+</body>
+</html>
