@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/flowtide-broker/FlowTide.iml" filepath="$PROJECT_DIR$/flowtide-broker/FlowTide.iml" />
+      <module fileurl="file://$PROJECT_DIR$/flowtide-consumer/flowtide-consumer.iml" filepath="$PROJECT_DIR$/flowtide-consumer/flowtide-consumer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/flowtide-producer/flowtide-producer.iml" filepath="$PROJECT_DIR$/flowtide-producer/flowtide-producer.iml" />
+    </modules>
+  </component>
+</project>

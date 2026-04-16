@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(cmd /c \"mvn compile 2>&1\")",
+      "Bash(grep -v \"$\")",
+      "Bash(./mvnw compile:*)",
+      "Bash(mkdir -p \"C:/MyProjects/flowtide-registry/src/main/java/com/bounteous/flowtide/registry\" \"C:/MyProjects/flowtide-registry/src/main/resources\")",
+      "Bash(mkdir -p \"C:/MyProjects/flowtide-gateway/src/main/java/com/bounteous/flowtide/gateway/config\" \"C:/MyProjects/flowtide-gateway/src/main/resources\")",
+      "Bash(mkdir -p \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/model\" \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/server/registry\" \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/clients/producer\" \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/controller\" \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/producer\" \"C:/MyProjects/flowtide-producer/src/main/java/com/bounteous/FlowTide/config\" \"C:/MyProjects/flowtide-producer/src/main/resources\")",
+      "Bash(mkdir -p \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/model\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/server/registry\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/clients/consumer\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/consumer\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/controller\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/registry\" \"C:/MyProjects/flowtide-consumer/src/main/java/com/bounteous/FlowTide/audit\" \"C:/MyProjects/flowtide-consumer/src/main/resources\")"
+    ]
+  }
+}
