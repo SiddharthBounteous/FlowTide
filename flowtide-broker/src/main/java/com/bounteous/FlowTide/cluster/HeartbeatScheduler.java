@@ -7,6 +7,7 @@ import com.bounteous.FlowTide.server.log.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,8 @@ public class HeartbeatScheduler {
     @Value("${server.host:localhost}")
     private String brokerHost;
 
-    @Value("${server.port:8083}")
+    /** Injected after Tomcat binds — gives the actual port even when server.port=0. */
+    @LocalServerPort
     private int brokerPort;
 
     public HeartbeatScheduler(ControllerClient controllerClient,
