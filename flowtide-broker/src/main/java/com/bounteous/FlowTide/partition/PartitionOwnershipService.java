@@ -126,4 +126,9 @@ public class PartitionOwnershipService {
     private static String partitionKey(String topic, int partition) {
         return topic + "-" + partition;
     }
+
+    /** Returns an unmodifiable view of follower partition keys ("topic-partition"). */
+    public Set<String> getFollowerKeys() {
+        return Collections.unmodifiableSet(followerKeys);
+    }
 }

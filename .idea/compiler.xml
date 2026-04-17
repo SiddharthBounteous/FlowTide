@@ -20,13 +20,17 @@
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
         </processorPath>
-        <module name="FlowTide" />
+        <module name="flowtide-broker" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="FlowTide" target="21" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="FlowTide" options="-parameters" />
+      <module name="flowtide-broker" options="-parameters" />
       <module name="flowtide-consumer" options="-parameters" />
       <module name="flowtide-controller" options="-parameters" />
       <module name="flowtide-gateway" options="-parameters" />
