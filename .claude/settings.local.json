@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(sed -i 's|<version>4.0.5</version>|<version>3.4.4</version>|g' C:/MyProjects/FlowTide/__TRACKED_VAR__/pom.xml)",
-      "Bash(sed -i 's|<spring.cloud.version>2025.0.0</spring.cloud.version>|<spring.cloud.version>2024.0.1</spring.cloud.version>|g' C:/MyProjects/FlowTide/__TRACKED_VAR__/pom.xml)"
+      "Bash(sed -i 's|<spring.cloud.version>2025.0.0</spring.cloud.version>|<spring.cloud.version>2024.0.1</spring.cloud.version>|g' C:/MyProjects/FlowTide/__TRACKED_VAR__/pom.xml)",
+      "Bash(cmd /c \"where java\")",
+      "Bash(cmd /c \"java -version\")",
+      "Bash(cmd /c \"dir \\\\\"C:\\\\\\\\Program Files\\\\\\\\\\\\\" /B\")"
     ]
   }
 }
