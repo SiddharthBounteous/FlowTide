@@ -7,7 +7,7 @@ import com.bounteous.FlowTide.server.log.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.web.context.WebServerApplicationContext;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,25 +26,27 @@ public class HeartbeatScheduler {
     private final ControllerClient   controllerClient;
     private final MetadataController metadataController;
     private final LogManager         logManager;
+    private final WebServerApplicationContext webServerApplicationContext;
 
     @Value("${server.host:localhost}")
     private String brokerHost;
 
     /** Injected after Tomcat binds — gives the actual port even when server.port=0. */
-    @LocalServerPort
-    private int brokerPort;
+
 
     public HeartbeatScheduler(ControllerClient controllerClient,
                               MetadataController metadataController,
-                              LogManager logManager) {
+                              LogManager logManager, WebServerApplicationContext webServerApplicationContext) {
         this.controllerClient   = controllerClient;
         this.metadataController = metadataController;
         this.logManager         = logManager;
+        this.webServerApplicationContext = webServerApplicationContext;
     }
 
     @Scheduled(fixedDelayString = "${kafka.cluster.heartbeat-interval-ms:5000}")
     public void sendHeartbeat() {
         long totalEvents = logManager.totalEventsStored();
+        int brokerPort = webServerApplicationContext.getWebServer().getPort();
 
         // 1. Notify flowtide-controller (cross-service, used for failover detection)
         try {

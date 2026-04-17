@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.web.context.WebServerApplicationContext;
+//import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -37,24 +38,27 @@ public class BrokerStartupRegistration implements ApplicationRunner {
     private final ControllerClient          controllerClient;
     private final PartitionOwnershipService ownershipService;
     private final MetadataController        metadataController;
+    private final WebServerApplicationContext webServerApplicationContext;
 
     @Value("${server.host:localhost}")
     private String host;
 
-    /** Injected after Tomcat binds — gives the actual port even when server.port=0. */
-    @LocalServerPort
-    private int port;
+//    /** Injected after Tomcat binds — gives the actual port even when server.port=0. */
+//    @LocalServerPort
+//    private int port;
 
     public BrokerStartupRegistration(ControllerClient controllerClient,
                                      PartitionOwnershipService ownershipService,
-                                     MetadataController metadataController) {
+                                     MetadataController metadataController, WebServerApplicationContext webServerApplicationContext) {
         this.controllerClient   = controllerClient;
         this.ownershipService   = ownershipService;
         this.metadataController = metadataController;
+        this.webServerApplicationContext = webServerApplicationContext;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        int port = webServerApplicationContext.getWebServer().getPort();
         log.info("Registering broker {}:{} with flowtide-controller...", host, port);
 
         try {
