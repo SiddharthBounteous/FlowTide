@@ -9,6 +9,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="flowtide-consumer" />
         <module name="flowtide-producer" />
+        <module name="flowtide-controller" />
         <module name="flowtide-registry" />
         <module name="flowtide-gateway" />
       </profile>
@@ -27,6 +28,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="FlowTide" options="-parameters" />
       <module name="flowtide-consumer" options="-parameters" />
+      <module name="flowtide-controller" options="-parameters" />
       <module name="flowtide-gateway" options="-parameters" />
       <module name="flowtide-producer" options="-parameters" />
       <module name="flowtide-registry" options="-parameters" />

@@ -1,4 +1,4 @@
-package com.bounteous.FlowTide;
+package com.bounteous.flowtide.controller;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,13 +7,11 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling
 @EnableDiscoveryClient
 @EnableFeignClients
-public class KafkaProjectApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(KafkaProjectApplication.class, args);
-
-	}
+@EnableScheduling
+public class FlowtideControllerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(FlowtideControllerApplication.class, args);
+    }
 }

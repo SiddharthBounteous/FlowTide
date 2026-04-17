@@ -10,6 +10,7 @@
         <option value="$PROJECT_DIR$/flowtide-producer/pom.xml" />
         <option value="$PROJECT_DIR$/flowtide-gateway/pom.xml" />
         <option value="$PROJECT_DIR$/flowtide-broker/pom.xml" />
+        <option value="$PROJECT_DIR$/flowtide-controller/pom.xml" />
       </list>
     </option>
   </component>

@@ -46,6 +46,11 @@ public class RouteConfig {
                         .path("/actuator/**")
                         .uri("lb://flowtide-broker"))
 
+                // Controller service — partition assignment, broker registry, topic metadata (port 8090)
+                .route("flowtide-controller", r -> r
+                        .path("/controller/**")
+                        .uri("lb://flowtide-controller"))
+
                 // Web UI
                 .route("flowtide-ui", r -> r
                         .path("/")

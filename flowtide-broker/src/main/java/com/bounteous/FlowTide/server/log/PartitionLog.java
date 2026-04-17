@@ -44,6 +44,8 @@ public class PartitionLog {
     /**
      * Appends an event and returns the assigned offset.
      * Thread-safe: offset assignment and map insertion are synchronized.
+     *
+     * <p>Used by the leader only — it assigns the canonical offset.
      */
     public synchronized long append(Event event) {
         long offset = nextOffset.getAndIncrement();
@@ -51,6 +53,29 @@ public class PartitionLog {
         events.put(offset, event);
         estimatedBytes.addAndGet(estimateSize(event));
         return offset;
+    }
+
+    /**
+     * Appends an event received from the leader, preserving its original offset.
+     *
+     * <p>Used exclusively by follower replication.  The event's {@code offset}
+     * field must already be set by the leader.  {@code nextOffset} is advanced
+     * to {@code event.getOffset() + 1} if it lags behind, keeping the follower
+     * log consistent for subsequent reads.
+     *
+     * @param event event with leader-assigned offset already set
+     */
+    public synchronized void replicateAppend(Event event) {
+        long leaderOffset = event.getOffset();
+        if (events.containsKey(leaderOffset)) {
+            return;  // already replicated — idempotent, skip
+        }
+        events.put(leaderOffset, event);
+        estimatedBytes.addAndGet(estimateSize(event));
+        // Advance nextOffset so latestOffset() always reflects the high-water mark
+        if (nextOffset.get() <= leaderOffset) {
+            nextOffset.set(leaderOffset + 1);
+        }
     }
 
     /**

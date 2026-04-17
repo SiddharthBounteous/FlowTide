@@ -3,6 +3,7 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/flowtide-broker/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flowtide-consumer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/flowtide-controller/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flowtide-gateway/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flowtide-producer/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flowtide-registry/src/main/java" charset="UTF-8" />
