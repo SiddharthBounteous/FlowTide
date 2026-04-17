@@ -190,6 +190,7 @@ public class FlowTideHttpConsumer {
         } catch (Exception e) {
             throw new FlowTideHttpException("Failed to get offsets: " + e.getMessage(), e);
         }
+
     }
 
     // ─────────────────────────────────────────────────────────────────────────

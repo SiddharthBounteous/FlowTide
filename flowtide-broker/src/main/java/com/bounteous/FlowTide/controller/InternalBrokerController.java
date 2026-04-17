@@ -57,7 +57,6 @@ public class InternalBrokerController {
             @PathVariable int partition,
             @RequestParam(defaultValue = "0") long offset,
             @RequestParam(defaultValue = "100") int limit) {
-
         List<Event> events = logManager.getLog(topic, partition).readFrom(offset, limit);
         log.debug("Fetched {} events: topic={} partition={} offset={}", events.size(), topic, partition, offset);
         return events;
