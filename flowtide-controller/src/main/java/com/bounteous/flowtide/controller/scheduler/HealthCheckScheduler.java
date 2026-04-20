@@ -2,6 +2,7 @@ package com.bounteous.flowtide.controller.scheduler;
 
 import com.bounteous.flowtide.controller.model.BrokerInfo;
 import com.bounteous.flowtide.controller.service.BrokerRegistryService;
+import com.bounteous.flowtide.controller.service.ConsumerGroupService;
 import com.bounteous.flowtide.controller.service.FailoverService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,10 +13,16 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Periodically scans all registered brokers for heartbeat timeouts.
+ * Periodically checks health of both brokers and consumer members.
  *
- * <p>If a broker has not sent a heartbeat within node-timeout-ms,
- * it is declared dead and FailoverService reassigns its partitions.
+ * <h3>Broker health</h3>
+ * Brokers that miss heartbeats for {@code node-timeout-ms} are declared dead
+ * and their partitions are failed over via {@link FailoverService}.
+ *
+ * <h3>Consumer member health</h3>
+ * Consumer members that miss heartbeats for {@code consumer.member-timeout-ms}
+ * are evicted from their groups and their partitions are rebalanced to
+ * surviving members.
  */
 @Component
 public class HealthCheckScheduler {
@@ -24,23 +31,38 @@ public class HealthCheckScheduler {
 
     private final BrokerRegistryService brokerRegistry;
     private final FailoverService       failoverService;
+    private final ConsumerGroupService  consumerGroupService;
 
     @Value("${kafka.cluster.node-timeout-ms:15000}")
     private long nodeTimeoutMs;
 
+    @Value("${kafka.consumer.member-timeout-ms:30000}")
+    private long memberTimeoutMs;
+
+    @Value("${kafka.topic.default-partitions:3}")
+    private int defaultPartitionCount;
+
     public HealthCheckScheduler(BrokerRegistryService brokerRegistry,
-                                FailoverService failoverService) {
-        this.brokerRegistry  = brokerRegistry;
-        this.failoverService = failoverService;
+                                FailoverService failoverService,
+                                ConsumerGroupService consumerGroupService) {
+        this.brokerRegistry      = brokerRegistry;
+        this.failoverService     = failoverService;
+        this.consumerGroupService = consumerGroupService;
     }
 
     @Scheduled(fixedDelayString = "${kafka.cluster.heartbeat-interval-ms:5000}")
-    public void checkBrokerHealth() {
+    public void checkHealth() {
+        checkBrokerHealth();
+        checkConsumerHealth();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void checkBrokerHealth() {
         List<BrokerInfo> deadBrokers = brokerRegistry.detectDeadBrokers(nodeTimeoutMs);
 
         if (deadBrokers.isEmpty()) {
-            log.trace("Health check passed — all {} brokers alive",
-                    brokerRegistry.getActiveBrokerCount());
+            log.trace("Broker health OK — {} active broker(s)", brokerRegistry.getActiveBrokerCount());
             return;
         }
 
@@ -48,5 +70,9 @@ public class HealthCheckScheduler {
             log.warn("Dead broker detected: {} — initiating failover", dead.getId());
             failoverService.handleDeadBroker(dead);
         }
+    }
+
+    private void checkConsumerHealth() {
+        consumerGroupService.evictDeadMembers(memberTimeoutMs, defaultPartitionCount);
     }
 }

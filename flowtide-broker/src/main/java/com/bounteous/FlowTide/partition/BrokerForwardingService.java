@@ -29,9 +29,7 @@ import java.util.List;
  */
 @Service
 public class BrokerForwardingService {
-
     private static final Logger log = LoggerFactory.getLogger(BrokerForwardingService.class);
-
     private final ControllerClient controllerClient;
     private final RestTemplate     restTemplate;
 
@@ -84,16 +82,13 @@ public class BrokerForwardingService {
      */
     public List<Event> forwardFetch(String topic, int partition, long offset, int limit) {
         String leaderUrl = resolveLeaderBaseUrl(topic, partition);
-
         String url = UriComponentsBuilder
                 .fromHttpUrl(leaderUrl + "/internal/events/{topic}/{partition}")
                 .queryParam("offset", offset)
                 .queryParam("limit", limit)
                 .buildAndExpand(topic, partition)
                 .toUriString();
-
         log.debug("Forwarding fetch → {} (offset={} limit={})", url, offset, limit);
-
         ResponseEntity<List<Event>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,

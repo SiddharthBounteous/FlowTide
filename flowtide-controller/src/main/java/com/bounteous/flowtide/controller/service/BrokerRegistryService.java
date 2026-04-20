@@ -61,15 +61,26 @@ public class BrokerRegistryService {
     //  Heartbeat
     // ─────────────────────────────────────────────────────────────────────────
 
-    public void heartbeat(String host, int port) {
+    /**
+     * Refreshes the heartbeat for a known broker.
+     * @return {@code true} if the broker was found, {@code false} if unknown.
+     *         The caller (controller) is responsible for auto-registering unknown brokers.
+     */
+    public boolean heartbeat(String host, int port) {
         String id = host + ":" + port;
         BrokerInfo broker = brokers.get(id);
         if (broker != null) {
             broker.updateHeartbeat();
+            broker.setActive(true);
             log.trace("Heartbeat received: {}", id);
-        } else {
-            log.warn("Heartbeat from unknown broker: {} — ignoring", id);
+            return true;
         }
+        return false;
+    }
+
+    /** Returns true when the broker is already in the registry (active or dead). */
+    public boolean isKnown(String brokerId) {
+        return brokers.containsKey(brokerId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

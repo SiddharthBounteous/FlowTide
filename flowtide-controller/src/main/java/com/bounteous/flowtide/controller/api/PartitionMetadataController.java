@@ -3,13 +3,17 @@ package com.bounteous.flowtide.controller.api;
 import com.bounteous.flowtide.controller.model.TopicCreateRequest;
 import com.bounteous.flowtide.controller.model.TopicMetadata;
 import com.bounteous.flowtide.controller.service.BrokerRegistryService;
+import com.bounteous.flowtide.controller.service.ISRService;
 import com.bounteous.flowtide.controller.service.PartitionAssignmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * REST API for topic partition metadata.
@@ -30,21 +34,35 @@ public class PartitionMetadataController {
 
     private final PartitionAssignmentService partitionAssignment;
     private final BrokerRegistryService      brokerRegistry;
+    private final ISRService                 isrService;
 
     public PartitionMetadataController(PartitionAssignmentService partitionAssignment,
-                                       BrokerRegistryService brokerRegistry) {
+                                       BrokerRegistryService brokerRegistry,
+                                       ISRService isrService) {
         this.partitionAssignment = partitionAssignment;
         this.brokerRegistry      = brokerRegistry;
+        this.isrService          = isrService;
     }
 
     /**
      * Creates a topic and assigns its partitions across active brokers.
      * If the topic already exists, returns existing assignment (idempotent).
+     *
+     * <p>Returns 503 when no brokers are currently registered so that the calling
+     * broker can log a warning and fall back to local-only operation, rather than
+     * crashing with a 500 that looks like a server bug.
      */
     @PostMapping
     public ResponseEntity<TopicMetadata> createTopic(@RequestBody TopicCreateRequest request) {
         log.info("Create topic request: topic={} partitions={} rf={}",
                 request.getTopic(), request.getPartitions(), request.getReplicationFactor());
+
+        if (brokerRegistry.getActiveBrokerCount() == 0) {
+            log.warn("Cannot assign topic '{}' — no active brokers registered yet. " +
+                     "The broker will retry automatically on its next heartbeat cycle.",
+                    request.getTopic());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
 
         TopicMetadata metadata = partitionAssignment.assignTopic(
                 request.getTopic(),
@@ -93,5 +111,37 @@ public class PartitionMetadataController {
         return partitionAssignment.getLeader(topic, partition)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  ISR
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Called by the leader broker when its ISR changes (follower added or removed).
+     * Body: list of current in-sync follower broker IDs (leader not included).
+     */
+    @PostMapping("/{topic}/{partition}/isr")
+    public ResponseEntity<String> updateISR(
+            @PathVariable String topic,
+            @PathVariable int    partition,
+            @RequestParam String leaderId,
+            @RequestBody  List<String> followers) {
+        isrService.updateISR(topic, partition, leaderId, followers);
+        return ResponseEntity.ok("ISR updated");
+    }
+
+    /** Returns current ISR for a specific partition. */
+    @GetMapping("/{topic}/{partition}/isr")
+    public ResponseEntity<Set<String>> getISR(
+            @PathVariable String topic,
+            @PathVariable int    partition) {
+        return ResponseEntity.ok(isrService.getISR(topic, partition));
+    }
+
+    /** Returns full ISR map for all topics (admin view). */
+    @GetMapping("/isr")
+    public Map<String, Map<Integer, Set<String>>> getAllISR() {
+        return isrService.getAllISR();
     }
 }

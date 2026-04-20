@@ -1,12 +1,12 @@
-package com.bounteous.FlowTide.cluster.metadata;
+package com.bounteous.FlowTide.server.registry;
 
-import com.bounteous.FlowTide.server.registry.BrokerInfo;
 import lombok.Getter;
 
 /**
  * A broker with its runtime state — heartbeat timestamp and alive/dead status.
  *
- * <p>Stored in {@link MetadataController} as the authoritative record of each broker.
+ * <p>Stored in {@link LocalBrokerRegistry} as the authoritative local record
+ * of each broker known to this node.
  * Volatile fields allow safe cross-thread reads without locking.
  */
 @Getter

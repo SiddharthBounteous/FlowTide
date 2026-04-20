@@ -79,7 +79,7 @@ public class PartitionOwnershipService {
      * Returns {@code true} if this broker is the current leader for the given
      * topic-partition.
      */
-    public boolean isLeader(String topic, int partition) {
+    public boolean isLeader(String topic, int partition){
         return leaderKeys.contains(partitionKey(topic, partition));
     }
 

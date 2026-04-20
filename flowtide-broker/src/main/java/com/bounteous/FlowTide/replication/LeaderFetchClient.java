@@ -61,7 +61,26 @@ public class LeaderFetchClient {
         } catch (RestClientException e) {
             log.warn("Replication fetch failed [leader={} topic={} partition={} fromOffset={}]: {}",
                     leaderId, topic, partition, fromOffset, e.getMessage());
-            return Collections.emptyList();   // will retry on next poll cycle
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Asks the leader for its current high-water mark (next offset to be assigned).
+     * Used by the follower to detect when it has fully caught up.
+     *
+     * @return leader's latestOffset, or -1 on error
+     */
+    public long getLatestOffset(String leaderId, String topic, int partition) {
+        String url = "http://" + leaderId
+                + "/internal/replicate/" + topic + "/" + partition + "/offset";
+        try {
+            Long offset = restTemplate.getForObject(url, Long.class);
+            return offset != null ? offset : -1L;
+        } catch (RestClientException e) {
+            log.warn("Could not fetch latest offset from leader={} {}-{}: {}",
+                    leaderId, topic, partition, e.getMessage());
+            return -1L;
         }
     }
 }

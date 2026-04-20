@@ -1,99 +1,92 @@
 package com.bounteous.FlowTide.controller;
 
-import com.bounteous.FlowTide.cluster.ClusterManager;
-import com.bounteous.FlowTide.consumer.ConsumerGroupInfo;
-import com.bounteous.FlowTide.consumer.ConsumerGroupManager;
+import com.bounteous.FlowTide.client.ControllerClient;
+import com.bounteous.FlowTide.client.model.BrokerInfo;
 import com.bounteous.FlowTide.metrics.MetricsSnapshot;
 import com.bounteous.FlowTide.metrics.MetricsService;
 import com.bounteous.FlowTide.server.log.LogManager;
-import com.bounteous.FlowTide.server.registry.BrokerInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Administrative API for cluster operators.
+ * Administrative API for broker operators.
  *
  * <p>Base path: {@code /api/admin}
  *
- * <p>In production this should be secured behind admin-only authentication.
+ * <p>Covers broker-specific concerns only:
+ * <ul>
+ *   <li>Cluster node visibility (local view of registered brokers)
+ *   <li>Metrics snapshot
+ *   <li>Storage management
+ * </ul>
+ *
+ * <p>Consumer group management belongs to flowtide-consumer + flowtide-controller.
+ * Topic management belongs to /api/topics (TopicController).
  */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
-    private final ClusterManager clusterManager;
-    private final ConsumerGroupManager consumerGroupManager;
-    private final MetricsService metricsService;
-    private final LogManager logManager;
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
-    public AdminController(ClusterManager clusterManager,
-                           ConsumerGroupManager consumerGroupManager,
+    private final ControllerClient controllerClient;
+    private final MetricsService   metricsService;
+    private final LogManager       logManager;
+
+    public AdminController(ControllerClient controllerClient,
                            MetricsService metricsService,
                            LogManager logManager) {
-        this.clusterManager = clusterManager;
-        this.consumerGroupManager = consumerGroupManager;
-        this.metricsService = metricsService;
-        this.logManager = logManager;
+        this.controllerClient = controllerClient;
+        this.metricsService   = metricsService;
+        this.logManager       = logManager;
     }
 
     // ─── Cluster ─────────────────────────────────────────────────────────────
 
-    /** List all nodes currently active in the cluster. */
+    /**
+     * List all active broker nodes across the entire cluster.
+     * Queries flowtide-controller — the single source of truth for broker membership.
+     * Falls back to empty list when the controller is unreachable.
+     */
     @GetMapping("/nodes")
     public List<BrokerInfo> getActiveNodes() {
-        return clusterManager.getActiveNodes();
+        try {
+            return controllerClient.getActiveBrokers();
+        } catch (Exception e) {
+            log.warn("Cannot reach controller for broker list: {} — returning empty", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
-    /** Trigger a manual node health check (normally runs on schedule). */
-    @PostMapping("/nodes/health-check")
-    public ResponseEntity<String> triggerHealthCheck() {
-        clusterManager.checkNodeHealth();
-        return ResponseEntity.ok("Health check complete. Active nodes: " + clusterManager.getActiveNodeCount());
+    /** Count of active broker nodes across the entire cluster. */
+    @GetMapping("/nodes/count")
+    public ResponseEntity<Map<String, Integer>> getActiveNodeCount() {
+        try {
+            int count = controllerClient.getActiveBrokers().size();
+            return ResponseEntity.ok(Map.of("activeNodes", count));
+        } catch (Exception e) {
+            log.warn("Cannot reach controller for broker count: {} — returning 0", e.getMessage());
+            return ResponseEntity.ok(Map.of("activeNodes", 0));
+        }
     }
 
-    // ─── Consumer Groups ─────────────────────────────────────────────────────
+    // ─── Metrics ─────────────────────────────────────────────────────────────
 
-    /** List all consumer groups and their partition assignments. */
-    @GetMapping("/groups")
-    public Collection<ConsumerGroupInfo> getAllGroups() {
-        return consumerGroupManager.getAllGroups();
-    }
-
-    /** Get consumer lag for a specific group and topic. */
-    @GetMapping("/groups/{groupId}/lag")
-    public ResponseEntity<Map<String, Object>> getConsumerLag(
-            @PathVariable String groupId,
-            @RequestParam String topic) {
-        long lag = consumerGroupManager.computeLag(groupId, topic);
-        metricsService.updateConsumerLag(topic, groupId, lag);
-        return ResponseEntity.ok(Map.of(
-                "groupId", groupId,
-                "topic", topic,
-                "lag", lag
-        ));
-    }
-
-    /** Force a rebalance for a consumer group. */
-    @PostMapping("/groups/{groupId}/rebalance")
-    public ResponseEntity<String> triggerRebalance(@PathVariable String groupId, @RequestParam String topic) {
-        consumerGroupManager.getGroup(groupId, topic).ifPresent(
-                group -> consumerGroupManager.rebalance(group, topic));
-        return ResponseEntity.ok("Rebalance triggered for group=" + groupId + " topic=" + topic);
-    }
-
-    // ─── Storage ─────────────────────────────────────────────────────────────
-
-    /** Overall platform metrics snapshot. */
+    /** Full metrics snapshot — event counts, throughput, partition sizes. */
     @GetMapping("/metrics")
     public MetricsSnapshot getMetrics() {
         return metricsService.snapshot();
     }
 
-    /** Forcefully clears all stored events (use with caution!). */
+    // ─── Storage ─────────────────────────────────────────────────────────────
+
+    /** Forcefully clears all stored events from all partitions (use with caution). */
     @DeleteMapping("/storage/clear")
     public ResponseEntity<String> clearAll() {
         logManager.clearAll();

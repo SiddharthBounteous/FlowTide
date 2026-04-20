@@ -124,20 +124,14 @@ public class InternalBrokerController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  Replication  (leader serves this; followers poll it)
+    //  Replication  (GET = follower catch-up pull,  POST = ISR push receive)
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Returns up to {@code limit} events starting at {@code fromOffset} for the
-     * given topic-partition.
-     *
-     * <p>This endpoint is called exclusively by follower brokers running
-     * {@link com.bounteous.FlowTide.replication.ReplicationPoller}.  It is
-     * functionally identical to the consumer fetch but lives under a separate
-     * path so it's easy to apply different rate-limits or auth in the future.
-     *
-     * <p>The gateway does NOT expose /internal/** — replication traffic stays
-     * inside the cluster.
+     * GET — Follower catch-up pull.
+     * Returns events starting at {@code fromOffset}.  Called by
+     * {@link com.bounteous.FlowTide.replication.ReplicationPoller} when a follower
+     * is behind and needs to catch up before joining the ISR.
      */
     @GetMapping("/replicate/{topic}/{partition}")
     public ResponseEntity<List<Event>> replicateFetch(
@@ -148,16 +142,44 @@ public class InternalBrokerController {
 
         if (!ownershipService.isLeader(topic, partition)
                 && ownershipService.getLeaderPartitionCount() > 0) {
-            // Safety guard: only the leader should serve replication reads.
-            // Return 409 so the follower knows to re-query the controller for the real leader.
-            log.warn("Replication request for {}-{} arrived at non-leader broker.", topic, partition);
+            log.warn("Catch-up fetch for {}-{} arrived at non-leader broker.", topic, partition);
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
 
         List<Event> events = logManager.getLog(topic, partition).readFrom(fromOffset, limit);
-        log.trace("Replication fetch: topic={} partition={} fromOffset={} returned={}",
+        log.trace("Catch-up fetch: topic={} partition={} fromOffset={} returned={}",
                 topic, partition, fromOffset, events.size());
         return ResponseEntity.ok(events);
+    }
+
+    /**
+     * GET offset — Returns this broker's current high-water mark for a partition.
+     * Used by followers to detect when they are fully caught up with the leader.
+     */
+    @GetMapping("/replicate/{topic}/{partition}/offset")
+    public ResponseEntity<Long> getReplicationOffset(
+            @PathVariable String topic,
+            @PathVariable int    partition) {
+        long offset = logManager.getLog(topic, partition).latestOffset();
+        return ResponseEntity.ok(offset);
+    }
+
+    /**
+     * POST — ISR push receive.
+     * Called by the leader to synchronously push new events to this follower
+     * as part of ISR replication.  Returns "ACK" immediately after appending.
+     */
+    @PostMapping("/replicate/{topic}/{partition}")
+    public ResponseEntity<String> receiveISRPush(
+            @PathVariable String topic,
+            @PathVariable int    partition,
+            @RequestBody List<Event> events) {
+
+        for (Event event : events) {
+            logManager.getLog(topic, partition).replicateAppend(event);
+        }
+        log.trace("ISR push received: topic={} partition={} count={}", topic, partition, events.size());
+        return ResponseEntity.ok("ACK");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

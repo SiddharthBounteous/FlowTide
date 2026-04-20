@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFeignClients
 @EnableScheduling
 public class FlowtideControllerApplication {
-    public static void main(String[] args) {
+    public static void main(String[] args){
         SpringApplication.run(FlowtideControllerApplication.class, args);
     }
 }
