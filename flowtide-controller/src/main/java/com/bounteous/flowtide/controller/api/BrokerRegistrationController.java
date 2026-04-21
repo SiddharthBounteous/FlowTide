@@ -8,6 +8,7 @@ import com.bounteous.flowtide.controller.service.BrokerRegistryService;
 import com.bounteous.flowtide.controller.service.PartitionAssignmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -118,5 +119,54 @@ public class BrokerRegistrationController {
     @GetMapping("/active")
     public List<BrokerInfo> getActiveBrokers() {
         return brokerRegistry.getActiveBrokers();
+    }
+
+    /**
+     * Gracefully removes a broker from the cluster.
+     *
+     * <p>Safe descaling flow:
+     * <ol>
+     *   <li>Mark the broker as draining (no new partition leadership assigned)
+     *   <li>Trigger failover — promote followers to leaders for all partitions
+     *       the draining broker leads
+     *   <li>Remove the broker from the active pool
+     *   <li>Rebalance remaining brokers so followers are redistributed
+     * </ol>
+     *
+     * <p>This ensures no partition goes leaderless during node removal.
+     *
+     * @param brokerId broker id in "host:port" format
+     */
+    @DeleteMapping("/{brokerId}")
+    public ResponseEntity<String> removeBroker(@PathVariable String brokerId) {
+        log.info("Graceful descaling requested for broker: {}", brokerId);
+
+        if (!brokerRegistry.isKnown(brokerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Broker not found: " + brokerId);
+        }
+
+        List<BrokerInfo> activeBefore = brokerRegistry.getActiveBrokers();
+        if (activeBefore.size() <= 1) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Cannot remove last active broker — cluster would have no nodes");
+        }
+
+        // Step 1: Mark dead so failover promotes its followers
+        brokerRegistry.getBroker(brokerId).ifPresent(b -> b.markDead());
+        log.info("Broker {} marked as draining", brokerId);
+
+        // Step 2: Promote followers to leaders for all affected partitions
+        List<BrokerInfo> remaining = brokerRegistry.getActiveBrokers();
+        List<String> affected = partitionAssignment.handleBrokerFailure(brokerId, remaining);
+        log.info("Failover complete for {}: {} topic(s) affected", brokerId, affected.size());
+
+        // Step 3: Rebalance remaining cluster so follower slots are filled
+        partitionAssignment.rebalanceAll(remaining);
+        log.info("Rebalance complete after removing {}: {} active brokers remain", brokerId, remaining.size());
+
+        return ResponseEntity.ok(String.format(
+                "Broker '%s' removed gracefully. %d topic(s) failed over. %d broker(s) remain.",
+                brokerId, affected.size(), remaining.size()));
     }
 }

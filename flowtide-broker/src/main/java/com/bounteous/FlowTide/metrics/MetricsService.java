@@ -96,10 +96,37 @@ public class MetricsService {
     // ─────────────────────────────────────────────────────────────────────────
 
     public MetricsSnapshot snapshot() {
+        Map<String, Long> eventsPerTopic = new java.util.LinkedHashMap<>();
+        Map<String, Long> bytesPerTopic  = new java.util.LinkedHashMap<>();
+
+        for (String topic : logManager.getAllTopics()) {
+            long topicEvents = 0;
+            long topicBytes  = 0;
+            for (var entry : logManager.getTopicLogs(topic).entrySet()) {
+                topicEvents += entry.getValue().size();
+                topicBytes  += entry.getValue().estimatedBytes();
+            }
+            eventsPerTopic.put(topic, topicEvents);
+            bytesPerTopic.put(topic, topicBytes);
+        }
+
+        long totalPartitions = logManager.getAllTopics().stream()
+                .mapToLong(t -> logManager.getTopicLogs(t).size())
+                .sum();
+
+        long publishTotal = publishCounters.values().stream()
+                .mapToLong(c -> (long) c.count())
+                .sum();
+
         return MetricsSnapshot.builder()
                 .totalEventsStored(logManager.totalEventsStored())
                 .totalBytesEstimated(logManager.totalBytesEstimated())
                 .topicCount(logManager.getAllTopics().size())
+                .totalPartitions((int) totalPartitions)
+                .eventsPerTopic(eventsPerTopic)
+                .bytesPerTopic(bytesPerTopic)
+                .publishedTotal(publishTotal)
+                .snapshotTimestamp(System.currentTimeMillis())
                 .build();
     }
 }

@@ -90,23 +90,28 @@ public class ProducerService {
         // Step 1 — append to local log (fast, in-memory)
         long offset = logManager.getLog(request.getTopic(), partition).append(event);
 
-        // Step 2 — synchronously replicate to ISR followers before acknowledging
-        try {
-            isrManager.replicateToISR(request.getTopic(), partition, event);
-        } catch (ISRException e) {
-            // ISR too small — roll back local append is complex in a skip-list,
-            // so we surface a 503 and let the producer retry.
-            // The event is in memory but will be lost if this broker restarts
-            // before ISR recovers — acceptable trade-off for in-memory mode.
-            log.error("ISR violation on publish: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        if (request.getDeliveryMode() == Event.DeliveryMode.AT_MOST_ONCE) {
+            // Fire-and-forget: return immediately without waiting for ISR replication.
+            // Lowest latency — event is in memory on this broker only.
+            // Risk: if this broker crashes before replication, the event is lost.
+            metrics.recordPublish(event.getTopic(), partition);
+            log.info("Published (AT_MOST_ONCE): topic={} partition={} offset={} — no ISR ack",
+                    event.getTopic(), partition, offset);
+        } else {
+            // AT_LEAST_ONCE — synchronously replicate to ISR followers before acknowledging.
+            // Slower, but the event is on ≥2 brokers before the producer gets a response.
+            try {
+                isrManager.replicateToISR(request.getTopic(), partition, event);
+            } catch (ISRException e) {
+                // ISR too small — surface a 503 so the producer can retry.
+                log.error("ISR violation on publish: {}", e.getMessage());
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+            }
+            metrics.recordPublish(event.getTopic(), partition);
+            log.info("Published (AT_LEAST_ONCE): topic={} partition={} offset={} isrSize={}",
+                    event.getTopic(), partition, offset,
+                    isrManager.getISRSize(request.getTopic(), partition));
         }
-
-        metrics.recordPublish(event.getTopic(), partition);
-
-        log.info("Published+ISR: topic={} partition={} offset={} isrSize={}",
-                event.getTopic(), partition, offset,
-                isrManager.getISRSize(request.getTopic(), partition));
 
         return new PublishResponse(
                 event.getId(), event.getTopic(), partition, offset, event.getTimestamp());

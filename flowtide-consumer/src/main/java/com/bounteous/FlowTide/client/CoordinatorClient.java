@@ -2,6 +2,7 @@ package com.bounteous.FlowTide.client;
 
 import com.bounteous.FlowTide.model.JoinRequest;
 import com.bounteous.FlowTide.model.JoinResponse;
+import com.bounteous.FlowTide.model.TopicMetadata;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,4 +53,12 @@ public interface CoordinatorClient {
                  @PathVariable("memberId") String memberId,
                  @RequestParam("topic") String topic,
                  @RequestParam("partitionCount") int partitionCount);
+
+    /**
+     * Fetch full topic metadata including partition→leader map.
+     * Used by the consumer to build its local leader cache so it can
+     * call leader brokers directly without going through load balancing.
+     */
+    @GetMapping("/controller/topics/{topic}")
+    TopicMetadata getTopicMetadata(@PathVariable("topic") String topic);
 }

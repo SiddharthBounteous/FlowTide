@@ -34,4 +34,12 @@ public interface BrokerClient {
      */
     @GetMapping("/internal/metadata/{topic}")
     Map<String, Integer> getMetadata(@PathVariable("topic") String topic);
+
+    /**
+     * Returns the current high-water mark (latest offset) for a partition.
+     * Used to implement LATEST consume strategy.
+     */
+    @GetMapping("/internal/replicate/{topic}/{partition}/offset")
+    long getLatestOffset(@PathVariable("topic") String topic,
+                         @PathVariable("partition") int partition);
 }

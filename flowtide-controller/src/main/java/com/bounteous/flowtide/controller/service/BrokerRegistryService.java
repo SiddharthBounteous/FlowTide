@@ -42,7 +42,6 @@ public class BrokerRegistryService {
     public boolean register(BrokerRegistration registration) {
         String id = registration.getId();
         boolean isNew = !brokers.containsKey(id);
-
         brokers.compute(id, (key, existing) -> {
             if (existing == null) {
                 log.info("Broker registered: {}", id);

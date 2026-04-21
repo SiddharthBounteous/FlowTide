@@ -205,6 +205,7 @@ public class ConsumerGroupService {
             ConsumerMember m = group.getMember(id);
             if (m != null) log.info("  {} → partitions {}", id, m.getAssignedPartitions());
         });
+
     }
 
     // -------------------------------------------------------------------------

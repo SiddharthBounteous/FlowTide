@@ -6,6 +6,7 @@ import com.bounteous.flowtide.controller.model.JoinResponse;
 import com.bounteous.flowtide.controller.service.ConsumerGroupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -116,6 +117,23 @@ public class ConsumerCoordinatorController {
             @RequestParam(defaultValue = "3") int partitionCount) {
         groupService.leave(groupId, memberId, topic, partitionCount);
         return ResponseEntity.ok("Member " + memberId + " left group " + groupId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  EXCEPTION HANDLING
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns 404 when a memberId is not found (e.g. controller restarted and
+     * lost in-memory state, or the member was evicted due to missed heartbeats).
+     *
+     * <p>The consumer catches this 404 and automatically rejoins the group,
+     * so the end-user never sees an error.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleUnknownMember(IllegalArgumentException ex) {
+        log.warn("Unknown member or group: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
     // ─────────────────────────────────────────────────────────────────────────

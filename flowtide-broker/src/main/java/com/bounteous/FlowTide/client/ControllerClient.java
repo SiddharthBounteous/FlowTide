@@ -71,4 +71,11 @@ public interface ControllerClient {
                      @PathVariable("partition") int partition,
                      @RequestParam("leaderId") String leaderId,
                      @RequestBody List<String> followers);
+
+    /**
+     * Gracefully removes a broker from the cluster.
+     * Triggers failover of all its partitions before removal.
+     */
+    @DeleteMapping("/controller/brokers/{brokerId}")
+    String removeBroker(@PathVariable("brokerId") String brokerId);
 }
