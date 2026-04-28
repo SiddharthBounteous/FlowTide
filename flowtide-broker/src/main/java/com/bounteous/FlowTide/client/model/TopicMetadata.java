@@ -12,6 +12,9 @@ import java.util.Map;
 public class TopicMetadata {
     private String               topic;
     private int                  partitionCount;
+    private int                  replicationFactor;
     /** partition index → brokerId ("host:port") of the leader */
     private Map<Integer, String> leaderMap;
+    /** Epoch millis set once by the controller when the topic was first created. */
+    private long createdAt;
 }

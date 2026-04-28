@@ -25,7 +25,7 @@ public class ServerPortProvider implements ApplicationListener<WebServerInitiali
     }
 
     /** Returns the port Tomcat is actually listening on (never 0 after startup). */
-    public int getPort() {
+    public int getPort(){
         return port;
     }
 }

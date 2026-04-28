@@ -28,7 +28,7 @@ public class TopicConfig implements Serializable {
     private RetentionPolicy retentionPolicy = RetentionPolicy.builder().build();
 
     @Builder.Default
-    private long createdAt = Instant.now().toEpochMilli();
+    private long createdAt = Instant.now().toEpochMilli();  // overridden via .createdAt() when sourced from controller
 
     @Builder.Default
     private boolean autoCreateEnabled = true;

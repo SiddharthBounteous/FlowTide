@@ -90,7 +90,6 @@ public class InternalBrokerController {
                 // Fall through to local handling as last resort
             }
         }
-
         return ResponseEntity.ok(producerService.publish(request));
     }
 
@@ -105,6 +104,13 @@ public class InternalBrokerController {
             @RequestParam(defaultValue = "0")   long offset,
             @RequestParam(defaultValue = "100") int  limit) {
 
+        // Reject fetches for topics that have been deleted.
+        // Without this guard, logManager.getLog() would silently recreate a
+        // PartitionLog for the deleted topic, making it appear alive again.
+        if (!logManager.topicExists(topic)) {
+            return ResponseEntity.notFound().build();
+        }
+
         // If we're not the leader and ownership is known → forward to leader
         if (ownershipService.getLeaderPartitionCount() > 0
                 && !ownershipService.isLeader(topic, partition)) {
@@ -114,7 +120,6 @@ public class InternalBrokerController {
                 return ResponseEntity.ok(forwarded);
             } catch (PartitionRoutingException ex) {
                 log.error("Forward failed: {} — falling back to local log.", ex.getMessage());
-                // Fall through to local read
             }
         }
 
@@ -187,15 +192,15 @@ public class InternalBrokerController {
     // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/metadata/{topic}")
-    public Map<String, Integer> getMetadata(@PathVariable String topic) {
-        int count = logManager.getTopicLogs(topic).size();
-        if (count == 0) {
-            // Auto-create default partitions on first metadata request
-            int defaultPartitions = 3;
-            for (int i = 0; i < defaultPartitions; i++) logManager.getLog(topic, i);
-            count = defaultPartitions;
+    public ResponseEntity<Map<String, Integer>> getMetadata(@PathVariable String topic) {
+        // Only serve metadata for topics that are explicitly registered.
+        // Do NOT auto-create via getLog() here — that would silently resurrect
+        // deleted topics, making topicExists() return true again after a delete.
+        if (!logManager.topicExists(topic)) {
+            return ResponseEntity.notFound().build();
         }
-        return Map.of("partitionCount", count);
+        int count = logManager.getTopicLogs(topic).size();
+        return ResponseEntity.ok(Map.of("partitionCount", count == 0 ? 3 : count));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

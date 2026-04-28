@@ -77,14 +77,15 @@ public class LogManager {
     //  Topic discovery
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns only topics that were explicitly registered via {@link #registerTopic}.
+     *
+     * <p>Intentionally excludes topics that exist only in {@code logMap} via
+     * {@link #getLog} auto-creation (replication, internal fetches).
+     * Those are internal partition log entries, not user-visible topics.
+     */
     public Set<String> getAllTopics() {
-        Set<String> fromConfig = topicConfigs.keySet();
-        Set<String> fromLogs = logMap.keySet().stream()
-                .map(key -> key.substring(0, key.lastIndexOf('-')))
-                .collect(Collectors.toSet());
-        Set<String> all = new HashSet<>(fromConfig);
-        all.addAll(fromLogs);
-        return Collections.unmodifiableSet(all);
+        return Collections.unmodifiableSet(topicConfigs.keySet());
     }
 
     public Map<String, PartitionLog> getTopicLogs(String topic) {
@@ -102,9 +103,16 @@ public class LogManager {
         return Collections.unmodifiableMap(topicConfigs);
     }
 
+    /**
+     * Returns true only if the topic was explicitly registered via {@link #registerTopic}.
+     *
+     * <p>Does NOT check {@code logMap} — partition logs can be auto-created by
+     * internal calls ({@link #getLog}, replication) even for topics that were never
+     * registered or have since been deleted. Using logMap here caused deleted topics
+     * to appear alive again after any fetch or replication call recreated their log entries.
+     */
     public boolean topicExists(String topic) {
-        return topicConfigs.containsKey(topic) ||
-                logMap.keySet().stream().anyMatch(k -> k.startsWith(topic + "-"));
+        return topicConfigs.containsKey(topic);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

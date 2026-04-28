@@ -25,9 +25,19 @@ public class TopicController {
         this.topicManager = topicManager;
     }
 
-    /** Create a new topic with configurable partitions, replication, and retention. */
+    /**
+     * Create a new topic.
+     * Returns 201 Created if the topic is new.
+     * Returns 409 Conflict if a topic with that name already exists.
+     */
     @PostMapping
-    public ResponseEntity<TopicConfig> createTopic(@RequestBody @Valid CreateTopicRequest request) {
+    public ResponseEntity<?> createTopic(@RequestBody @Valid CreateTopicRequest request) {
+        if (topicManager.topicExists(request.getName())) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Topic '" + request.getName() + "' already exists. " +
+                          "Use GET /api/topics/" + request.getName() + " to view its configuration.");
+        }
         TopicConfig config = topicManager.createTopic(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(config);
     }

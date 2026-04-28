@@ -32,16 +32,6 @@ public class LeaderFetchClient {
     static final int FETCH_LIMIT = 500;
 
     private final RestTemplate restTemplate = new RestTemplate();
-
-    /**
-     * Fetches events from the leader starting at {@code fromOffset}.
-     *
-     * @param leaderId   leader's "host:port" as returned by the controller
-     * @param topic      topic name
-     * @param partition  partition index
-     * @param fromOffset follower's current high-water mark (next expected offset)
-     * @return list of events to replicate; empty list if none or on error
-     */
     public List<Event> fetch(String leaderId, String topic, int partition, long fromOffset) {
         String url = "http://" + leaderId
                 + "/internal/replicate/" + topic + "/" + partition

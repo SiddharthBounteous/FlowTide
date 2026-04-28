@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
 
 /**
  * Assigns partitions to brokers and tracks the full leader map.
@@ -56,6 +57,16 @@ public class PartitionAssignmentService {
      */
     private final ConcurrentHashMap<String, Map<Integer, List<String>>> followerMap = new ConcurrentHashMap<>();
 
+    /**
+     * topic → epoch millis when the topic was first assigned.
+     * Stored here so every broker always gets the same createdAt regardless
+     * of which broker instance handles the GET /api/topics/{topic} request.
+     */
+    private final ConcurrentHashMap<String, Long> createdAtMap = new ConcurrentHashMap<>();
+
+    /** topic → replication factor as requested at creation time. */
+    private final ConcurrentHashMap<String, Integer> replicationFactorMap = new ConcurrentHashMap<>();
+
     // ─────────────────────────────────────────────────────────────────────────
     //  Topic creation / assignment
     // ─────────────────────────────────────────────────────────────────────────
@@ -95,6 +106,8 @@ public class PartitionAssignmentService {
 
         leaderMap.put(topic, leaders);
         followerMap.put(topic, followers);
+        createdAtMap.put(topic, System.currentTimeMillis());
+        replicationFactorMap.put(topic, effectiveRF);
 
         log.info("Assigned topic '{}': {} partitions, RF={} across {} brokers",
                 topic, partitionCount, effectiveRF, activeBrokers.size());
@@ -232,7 +245,21 @@ public class PartitionAssignmentService {
             }
         }
 
-        return new PartitionAssignment(brokerId, roles);
+        // Include all known topics so the broker can detect and remove deleted ones
+        return new PartitionAssignment(brokerId, roles, new HashSet<>(leaderMap.keySet()));
+    }
+
+    /**
+     * Removes a topic from the controller's assignment maps.
+     * Called when a broker deletes a topic — all other brokers will detect the
+     * removal on their next heartbeat via the {@code knownTopics} field.
+     */
+    public void deleteTopic(String topic) {
+        leaderMap.remove(topic);
+        followerMap.remove(topic);
+        createdAtMap.remove(topic);
+        replicationFactorMap.remove(topic);
+        log.info("Topic '{}' removed from controller assignment", topic);
     }
 
     public boolean topicExists(String topic) {
@@ -244,7 +271,9 @@ public class PartitionAssignmentService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private TopicMetadata buildTopicMetadata(String topic) {
-        Map<Integer, String> leaders = leaderMap.getOrDefault(topic, Collections.emptyMap());
-        return new TopicMetadata(topic, leaders.size(), new LinkedHashMap<>(leaders));
+        Map<Integer, String> leaders           = leaderMap.getOrDefault(topic, Collections.emptyMap());
+        int                  replicationFactor = replicationFactorMap.getOrDefault(topic, 1);
+        long                 createdAt         = createdAtMap.getOrDefault(topic, 0L);
+        return new TopicMetadata(topic, leaders.size(), replicationFactor, new LinkedHashMap<>(leaders), createdAt);
     }
 }

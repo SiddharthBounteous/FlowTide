@@ -74,16 +74,12 @@ public class PartitionMetadataController {
     }
 
     /**
-     * Returns full metadata for a topic.
-     * If the topic is not known to the controller, auto-assigns it.
+     * Returns full metadata for a topic, or 404 if the topic does not exist.
      */
     @GetMapping("/{topic}")
     public ResponseEntity<TopicMetadata> getTopicMetadata(@PathVariable String topic) {
         if (!partitionAssignment.topicExists(topic)) {
-            log.info("Topic '{}' not found — auto-assigning with defaults", topic);
-            TopicMetadata metadata = partitionAssignment.autoAssignTopic(
-                    topic, brokerRegistry.getActiveBrokers());
-            return ResponseEntity.ok(metadata);
+            return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(partitionAssignment.getTopicMetadata(topic));
     }
@@ -97,17 +93,30 @@ public class PartitionMetadataController {
     }
 
     /**
+     * Deletes a topic from the controller's assignment maps.
+     *
+     * <p>All brokers will detect the deletion on their next heartbeat cycle
+     * (within {@code heartbeat-interval-ms}) via the {@code knownTopics} field
+     * in the heartbeat response, and will delete their local partition logs.
+     */
+    @DeleteMapping("/{topic}")
+    public ResponseEntity<String> deleteTopic(@PathVariable String topic) {
+        if (!partitionAssignment.topicExists(topic)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Topic not found: " + topic);
+        }
+        partitionAssignment.deleteTopic(topic);
+        log.info("Topic '{}' deleted from controller", topic);
+        return ResponseEntity.ok("Topic '" + topic + "' deleted from cluster");
+    }
+
+    /**
      * Returns the leader broker ID for a specific topic-partition.
      * Used by brokers to check routing before handling a request.
      */
     @GetMapping("/{topic}/{partition}/leader")
     public ResponseEntity<String> getLeader(@PathVariable String topic,
                                             @PathVariable int partition) {
-        // Auto-assign topic if unknown
-        if (!partitionAssignment.topicExists(topic)) {
-            partitionAssignment.autoAssignTopic(topic, brokerRegistry.getActiveBrokers());
-        }
-
         return partitionAssignment.getLeader(topic, partition)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

@@ -78,4 +78,11 @@ public interface ControllerClient {
      */
     @DeleteMapping("/controller/brokers/{brokerId}")
     String removeBroker(@PathVariable("brokerId") String brokerId);
+
+    /**
+     * Deletes a topic from the controller's assignment maps.
+     * All other brokers will remove their local logs on the next heartbeat.
+     */
+    @DeleteMapping("/controller/topics/{topic}")
+    String deleteTopic(@PathVariable("topic") String topic);
 }

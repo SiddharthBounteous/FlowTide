@@ -21,6 +21,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorBody(e.getMessage(), HttpStatus.BAD_REQUEST));
     }
 
+
+
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleInternalError(RuntimeException e) {
         log.error("Internal error", e);
@@ -36,4 +39,5 @@ public class GlobalExceptionHandler {
                 "message", message
         );
     }
+
 }

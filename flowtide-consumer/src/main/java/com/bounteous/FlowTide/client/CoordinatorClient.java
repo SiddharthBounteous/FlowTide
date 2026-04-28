@@ -18,7 +18,6 @@ import java.util.List;
 
 @FeignClient(name = "flowtide-controller")
 public interface CoordinatorClient {
-
     /**
      * Join a consumer group.
      * The coordinator generates a unique memberId and returns assigned partitions.

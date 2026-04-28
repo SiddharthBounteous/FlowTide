@@ -27,6 +27,14 @@ import java.util.Map;
 public class TopicMetadata {
     private String               topic;
     private int                  partitionCount;
+    private int                  replicationFactor;
     /** partition index → brokerId ("host:port") of the leader */
     private Map<Integer, String> leaderMap;
+    /**
+     * Epoch millis when the topic was first assigned by the controller.
+     * Stored here so every broker gets the same stable value — prevents
+     * createdAt changing on each GET when different broker instances
+     * synthesise a TopicConfig from this metadata.
+     */
+    private long createdAt;
 }

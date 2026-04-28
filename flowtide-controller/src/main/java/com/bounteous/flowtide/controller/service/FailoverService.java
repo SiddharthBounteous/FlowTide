@@ -39,12 +39,10 @@ public class FailoverService {
         log.warn("Starting failover for dead broker: {}", deadId);
 
         List<BrokerInfo> activeBrokers = brokerRegistry.getActiveBrokers();
-
         if (activeBrokers.isEmpty()) {
             log.error("Failover failed — no active brokers remaining! Cluster is DOWN.");
             return;
         }
-
         List<String> affectedTopics = partitionAssignment.handleBrokerFailure(deadId, activeBrokers);
 
         if (affectedTopics.isEmpty()) {
